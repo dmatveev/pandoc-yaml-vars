@@ -19,7 +19,7 @@ executable pandoc-yaml-vars
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base >=4.8 && <4.9, parsec, containers
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
@@ -29,7 +29,7 @@ test-suite tests
   hs-source-dirs: tests .
   main-is:        Tests.hs
   other-modules:
-    Parser
+    Processor
 
   other-extensions: 
   ghc-options: -Wall
@@ -38,6 +38,8 @@ test-suite tests
     HUnit,
     base,
     tasty,
-    tasty-hunit
+    tasty-hunit,
+    parsec,
+    containers
 
   default-language:    Haskell2010

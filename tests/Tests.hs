@@ -1,9 +1,9 @@
 import Test.Tasty
 
-import Parser
+import Processor
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "pandoc-yaml-vars tests" [ parser ]
+tests = testGroup "pandoc-yaml-vars tests" [ processor ]
