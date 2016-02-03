@@ -7,7 +7,8 @@ module Text.YamlVars.Processor
        , Dictionary
        ) where
 
-import Text.Parsec (parse)
+import Text.Parsec
+import Text.Parsec.String
 import qualified Data.Map.Strict as M
 
 type ParsedString = [ParsedElement]
@@ -18,7 +19,19 @@ data ParsedElement = PStr !String
 
 type Dictionary = M.Map String String
 
-stringParser = undefined
+stringParser :: Parser ParsedString
+stringParser = many (try parseVar <|> parseTxt)
+
+parseVar :: Parser ParsedElement
+parseVar = PVar <$> (char '%' *> manyTill anyChar (char '%'))
+
+parseTxt :: Parser ParsedElement
+parseTxt = PStr <$> do
+  firstChar <- optionMaybe (char '%')
+  remaining <- many1 (noneOf "%")
+  return $ case firstChar of
+   Nothing -> remaining
+   Just x  -> x:remaining
 
 parseStr :: String -> Either String ParsedString
 parseStr s = case parse stringParser "" s of
