@@ -47,4 +47,9 @@ mkDict :: [(String, String)] -> Dictionary
 mkDict = M.fromList
 
 buildStr :: ParsedString -> Dictionary -> String
-buildStr = undefined
+buildStr p d = concat $ map (subst d) p
+  where 
+    subst _ (PStr s) = s
+    subst _ (PVar v) = case M.lookup v d of
+          Nothing  -> "%" ++ v ++ "%"
+          (Just s) -> s
