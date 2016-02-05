@@ -23,15 +23,19 @@ stringParser :: Parser ParsedString
 stringParser = many (try parseVar <|> parseTxt)
 
 parseVar :: Parser ParsedElement
-parseVar = PVar <$> (char '%' *> manyTill anyChar (char '%'))
+parseVar = do
+  _ <- char '%'
+  var <- many1 (letter <|> digit <|> char '-')
+  _ <- char '%'
+  return $ PVar var
 
 parseTxt :: Parser ParsedElement
-parseTxt = PStr <$> do
-  firstChar <- optionMaybe (char '%')
-  remaining <- many1 (noneOf "%")
-  return $ case firstChar of
-   Nothing -> remaining
-   Just x  -> x:remaining
+parseTxt = PStr <$> (try startsP <|> noP)
+  where startsP = (++) <$> pp <*> mnoP
+        mnoP    = option "" (noP)
+        noP     = many1 (noneOf "%")
+        pp      = many1 $ char '%'
+
 
 parseStr :: String -> Either String ParsedString
 parseStr s = case parse stringParser "" s of

@@ -20,6 +20,8 @@ parser = testGroup "Expression parser"
          , testParser "file"               [PStr "file"]
          , testParser "%con%%cat%"         [PVar "con", PVar "cat"]
          , testParser "%con%%cat"          [PVar "con", PStr "%cat"]
+         , testParser "%con%%%cat"         [PVar "con", PStr "%%cat"]
+         , testParser "%con%%%%cat"        [PVar "con", PStr "%%%cat"]
          , testParser "%name%@example.com" [PVar "name",  PStr "@example.com"]
          , testParser "user@%domain%"      [PStr "user@", PVar "domain"]
          , testParser "foo-%bar%-baz"      [PStr "foo-", PVar "bar", PStr "-baz"]
