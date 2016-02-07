@@ -3,7 +3,6 @@ module Processor (processor) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-
 import Text.YamlVars.Processor
 
 testParser :: String -> ParsedString -> TestTree

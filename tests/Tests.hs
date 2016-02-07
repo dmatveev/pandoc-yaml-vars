@@ -1,9 +1,10 @@
 import Test.Tasty
 
 import Processor
+import Config
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "pandoc-yaml-vars tests" [ processor ]
+tests = testGroup "pandoc-yaml-vars tests" [ processor, config ]

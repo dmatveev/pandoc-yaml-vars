@@ -1,6 +1,7 @@
 module Text.YamlVars.Processor
        ( process
        , parseStr
+       , parseEntry
        , parseDict
        , buildStr
        , mkDict
@@ -62,7 +63,7 @@ process s d =
    (Right ps) -> buildStr ps d
 
 parseDict :: Parser Dictionary
-parseDict = mkDict <$> many parseEntry
+parseDict = mkDict <$> (optional (many newline) *> many parseEntry)
 
 parseEntry :: Parser (String, String)
 parseEntry = do
@@ -71,5 +72,5 @@ parseEntry = do
   char ':'
   many space
   str <- many1 (noneOf "\n")
-  newline
+  eof <|> (newline >> return ())
   return $ (var, str)
