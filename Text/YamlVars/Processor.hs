@@ -1,5 +1,7 @@
 module Text.YamlVars.Processor
-       ( parseStr
+       ( process
+       , parseStr
+       , parseDict
        , buildStr
        , mkDict
        , ParsedString
@@ -22,12 +24,11 @@ type Dictionary = M.Map String String
 stringParser :: Parser ParsedString
 stringParser = many (try parseVar <|> parseTxt)
 
+parseVarName :: Parser String
+parseVarName = many1 (letter <|> digit <|> char '-')
+
 parseVar :: Parser ParsedElement
-parseVar = do
-  _ <- char '%'
-  var <- many1 (letter <|> digit <|> char '-')
-  _ <- char '%'
-  return $ PVar var
+parseVar = PVar <$> (char '%' *> parseVarName <* char '%')
 
 parseTxt :: Parser ParsedElement
 parseTxt = PStr <$> (try startsP <|> noP)
@@ -48,8 +49,27 @@ mkDict = M.fromList
 
 buildStr :: ParsedString -> Dictionary -> String
 buildStr p d = concat $ map (subst d) p
-  where 
+  where
     subst _ (PStr s) = s
     subst _ (PVar v) = case M.lookup v d of
           Nothing  -> "%" ++ v ++ "%"
           (Just s) -> s
+
+process :: String -> Dictionary -> String
+process s d =
+  case parseStr s of
+   (Left _)   -> s
+   (Right ps) -> buildStr ps d
+
+parseDict :: Parser Dictionary
+parseDict = mkDict <$> many parseEntry
+
+parseEntry :: Parser (String, String)
+parseEntry = do
+  var <- parseVarName
+  many space
+  char ':'
+  many space
+  str <- many1 (noneOf "\n")
+  newline
+  return $ (var, str)
