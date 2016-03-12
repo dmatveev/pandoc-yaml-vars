@@ -32,7 +32,7 @@ main = do
   case mDictFile of
    Nothing   -> die "Please specify dictionary path in VARSFILE"
    (Just df) -> do
-     md <- parseFromFile parseDict df
+     md <- parseFromFile parseFile df
      case md of
       (Left e)  -> die $ show e
       (Right d) -> toJSONFilter (substBlock d)

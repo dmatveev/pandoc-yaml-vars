@@ -1,8 +1,9 @@
 module Text.YamlVars.Processor
        ( process
        , parseStr
+       , parseDoc
        , parseEntry
-       , parseDict
+       , parseFile
        , buildStr
        , mkDict
        , ParsedString
@@ -26,7 +27,11 @@ stringParser :: Parser ParsedString
 stringParser = many (try parseVar <|> parseTxt)
 
 parseVarName :: Parser String
-parseVarName = many1 (letter <|> digit <|> char '-')
+parseVarName = do
+  firstChar <- validChar
+  following <- many1 (validChar <|> char '-')
+  return $ firstChar : following
+ where validChar = letter <|> digit
 
 parseVar :: Parser ParsedElement
 parseVar = PVar <$> (char '%' *> parseVarName <* char '%')
@@ -62,8 +67,8 @@ process s d =
    (Left _)   -> s
    (Right ps) -> buildStr ps d
 
-parseDict :: Parser Dictionary
-parseDict = mkDict <$> (optional (many newline) *> many parseEntry)
+parseFile :: Parser Dictionary
+parseFile = mkDict . concat <$> many1 parseDoc
 
 parseEntry :: Parser (String, String)
 parseEntry = do
@@ -74,3 +79,23 @@ parseEntry = do
   str <- many1 (noneOf "\n")
   eof <|> (newline >> return ())
   return $ (var, str)
+
+parseDocStart :: Parser ()
+parseDocStart = string "---" >> return ()
+
+parseDocEnd :: Parser ()
+parseDocEnd = string "..." >> return ()
+
+whitespace :: Parser ()
+whitespace = many (space <|> newline) >> return ()
+
+parseDoc :: Parser [(String, String)]
+parseDoc = do
+  whitespace
+  optional parseDocStart
+  whitespace
+  entries <- many1 parseEntry
+  whitespace
+  optional parseDocEnd
+  whitespace
+  return entries
