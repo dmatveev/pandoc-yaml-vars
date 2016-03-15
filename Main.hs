@@ -21,8 +21,8 @@ substInl d i = case i of
   (Code a s)         -> Code a (process s d)
   (Math m s)         -> Math m (process s d)
   (RawInline f s)    -> RawInline f (process s d)
-  (Link ii (u,t))    -> Link  (p' ii) (process u d, process t d)
-  (Image ii (u,t))   -> Image (p' ii) (process u d, process t d)
+  (Link a ii (u,t))  -> Link a (p' ii) (process u d, process t d)
+  (Image a ii (u,t)) -> Image a (p' ii) (process u d, process t d)
   otherwise          -> i
  where p' = walk (substInl d)
 

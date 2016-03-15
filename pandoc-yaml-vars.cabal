@@ -44,8 +44,8 @@ test-suite tests
   build-depends:  HUnit
                 , base
                 , containers
-                , pandoc >= 1.15
-                , pandoc-types >= 1.12
+                , pandoc >= 1.16
+                , pandoc-types >= 1.16
                 , parsec
                 , tasty >= 0.10
                 , tasty-hunit >= 0.9
