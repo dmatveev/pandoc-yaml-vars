@@ -1,0 +1,8 @@
+*~
+*.o
+*.hi
+dist/*
+*.md
+*.html
+*.pdf
+*.yaml
