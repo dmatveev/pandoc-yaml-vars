@@ -9,6 +9,11 @@ import Text.YamlVars.Processor
 import System.Exit (die)
 import System.Environment (lookupEnv)
 
+substDoc :: Dictionary -> Pandoc -> IO Pandoc
+substDoc d (Pandoc meta blocks) = do
+  writeFile "meta.txt" $ show meta
+  return $ Pandoc meta $ walk (substBlock d) blocks
+
 substBlock :: Dictionary -> Block -> Block
 substBlock d b = case b of
   (CodeBlock a s) -> CodeBlock a (process s d)
@@ -35,4 +40,4 @@ main = do
      md <- parseFromFile parseFile df
      case md of
       (Left e)  -> die $ show e
-      (Right d) -> toJSONFilter (substBlock d)
+      (Right d) -> toJSONFilter (substDoc d)

@@ -5,14 +5,17 @@ module Text.YamlVars.Processor
        , parseEntry
        , parseFile
        , buildStr
+       , buildInlines
        , mkDict
        , ParsedString
        , ParsedElement(..)
        , Dictionary
+       , MetaDictionary
        ) where
 
 import Text.Parsec
 import Text.Parsec.String
+import Text.Pandoc.Definition (Inline(..))
 import qualified Data.Map.Strict as M
 
 type ParsedString = [ParsedElement]
@@ -22,6 +25,7 @@ data ParsedElement = PStr !String
                      deriving (Eq, Show)
 
 type Dictionary = M.Map String String
+type MetaDictionary = M.Map String [Inline]
 
 stringParser :: Parser ParsedString
 stringParser = many (try parseVar <|> parseTxt)
@@ -29,7 +33,7 @@ stringParser = many (try parseVar <|> parseTxt)
 parseVarName :: Parser String
 parseVarName = do
   firstChar <- validChar
-  following <- many1 (validChar <|> char '-')
+  following <- many (validChar <|> char '-')
   return $ firstChar : following
  where validChar = letter <|> digit
 
@@ -54,12 +58,20 @@ mkDict :: [(String, String)] -> Dictionary
 mkDict = M.fromList
 
 buildStr :: ParsedString -> Dictionary -> String
-buildStr p d = concat $ map (subst d) p
+buildStr p d = concat $ map subst p
   where
-    subst _ (PStr s) = s
-    subst _ (PVar v) = case M.lookup v d of
-          Nothing  -> "%" ++ v ++ "%"
-          (Just s) -> s
+    subst (PStr s) = s
+    subst (PVar v) = case M.lookup v d of
+      Nothing  -> "%" ++ v ++ "%"
+      (Just s) -> s
+
+buildInlines :: ParsedString -> MetaDictionary -> [Inline]
+buildInlines p d = concat $ map subst p
+  where
+    subst (PStr s) = [Str s]
+    subst (PVar v) = case M.lookup v d of
+      Nothing   -> [Str ("%" ++ v ++ "%")]
+      (Just ii) -> ii
 
 process :: String -> Dictionary -> String
 process s d =
