@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- Thoughts and considerations
 -- Previously:
 -- - We worked only on strings - Str a, which is a constructor of Inline
@@ -18,6 +20,8 @@ module MetaSubstitute (metaSubst) where
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Pandoc.Definition
+import Text.Pandoc.Walk
+
 import qualified Data.Map as M
 
 import Text.YamlVars.Processor (parseStr, buildInlines, MetaDictionary)
@@ -27,20 +31,51 @@ substMetaStr :: MetaDictionary -> Inline -> [Inline]
 substMetaStr dict i@(Str s) = case parseStr s of
   (Left _)  -> [i]
   (Right ps)-> buildInlines ps dict
-substMetaStr _    _         = error "substMetaStr works with strings only!"
+substMetaStr _    i = [i]
 
+substMetaInl :: MetaDictionary -> Inline -> Inline
+substMetaInl dict i = case i of
+  (Emph ii)         -> Emph        $ process ii
+  (Strong ii)       -> Strong      $ process ii
+  (Strikeout ii)    -> Strikeout   $ process ii
+  (Superscript ii)  -> Superscript $ process ii
+  (Subscript ii)    -> Subscript   $ process ii
+  (SmallCaps ii)    -> SmallCaps   $ process ii
+  (Quoted q ii)     -> Quoted q    $ process ii
+  (Cite cc ii)      -> Cite cc     $ process ii
+  (Link attr ii t)  -> Link  attr  ( process ii ) t
+  (Image attr ii t) -> Image attr  ( process ii ) t
+  (Span attr ii)    -> Span  attr  ( process ii )
+  (Note bb)         -> Note        $ map (walk (substMetaBlock dict)) bb
+  _                 -> i
+ where
+   process ii = map (walk (substMetaInl dict)) $ concat $ map (substMetaStr dict) ii
 
--- Tests
+substMetaBlock :: MetaDictionary -> Block -> Block
+substMetaBlock dict b = case b of
+  (Plain ii)             -> Plain           $ process ii
+  (Para ii)              -> Para            $ process ii
+  (DefinitionList dl)    -> DefinitionList  $ map processDef dl
+  (Header lvl attr ii)   -> Header lvl attr $ process ii
+  (Table ii aa dd hh cc) -> Table (process ii) aa dd (processBB hh) (map processBB cc)
+  _                      -> walk (substMetaInl dict) b
+ where
+   process ii         = map (walk (substMetaInl dict)) $ concat $ map (substMetaStr dict) ii
+   processBB          = map (walk (substMetaBlock dict))
+   processDef (ii,bb) = (process ii, processBB bb)
+
+-- Tests (on Str)
 
 testInlSubst :: String -> [Inline] -> TestTree
-testInlSubst name value = testGroup name
-               [ testCase "nothing" $ doSubst (Str "text")  @?= [Str "text"]
-               , testCase "single"  $ doSubst (Str "%x%")   @?= value
-               , testCase "prefix"  $ doSubst (Str "n-%x%") @?= [Str "n-"] ++ value
-               , testCase "postfix" $ doSubst (Str "%x%th") @?= value ++ [Str "th"]
-               ]
-  where doSubst i = substMetaStr md i
-        md        = M.fromList [("x", value)]
+testInlSubst name value =
+  testGroup name
+  [ testCase "nothing" $ doSubst (Str "text")  @?= [Str "text"]
+  , testCase "single"  $ doSubst (Str "%x%")   @?= value
+  , testCase "prefix"  $ doSubst (Str "n-%x%") @?= [Str "n-"] ++ value
+  , testCase "postfix" $ doSubst (Str "%x%th") @?= value ++ [Str "th"]
+  ]
+ where doSubst i = substMetaStr md i
+       md        = M.fromList [("x", value)]
 
 singleInline :: TestTree
 singleInline = testInlSubst "Single inline" [Str "value!"]
@@ -49,5 +84,32 @@ multipleInlines :: TestTree
 multipleInlines = testInlSubst "Multiple inlines" value
   where value = [ Str "haskell", Space, Str "is", Space, Strong [Str "fun"] ]
 
+-- Tests (on document subtree)
+testTreeSubst :: String -> ([Inline] -> Block) -> [Inline] -> TestTree
+testTreeSubst name f value =
+  testGroup name
+  [ testCase "nothing" $ doSubst (f [Str "text" ]) @?= (f $ [Str "text"]       )
+  , testCase "single"  $ doSubst (f [Str "%x%"  ]) @?= (f $ value              )
+  , testCase "prefix"  $ doSubst (f [Str "n-%x%"]) @?= (f $ [Str "n-"] ++ value)
+  , testCase "postfix" $ doSubst (f [Str "%x%th"]) @?= (f $ value ++ [Str "th"])
+  ]
+ where doSubst t = walk (substMetaBlock md) t
+       md        = M.fromList [("x", value)]
+
+treeTests :: String -> ([Inline] -> Block) -> TestTree
+treeTests s f = testGroup s
+                [ testTreeSubst "Single inline"    f [Str "value!"]
+                , testTreeSubst "Multiple inlines" f value
+                ]
+  where value = [ Str "haskell", Space, Str "is", Space, Strong [Str "fun"] ]
+
+
 metaSubst :: TestTree
-metaSubst = testGroup "MetaInline substitutions" [ singleInline, multipleInlines ]
+metaSubst = testGroup "MetaInline substitutions"
+            [ singleInline
+            , multipleInlines
+            , treeTests "Paragraph" Para
+            , treeTests "Paragraph + strong" (\ii -> Para [Strong ii])
+            , treeTests "Paragraph + header" (\ii -> Header 1 nullAttr ii)
+            , treeTests "Paragraph + blocks" (\ii -> Para $ [Strong ii, Emph ii] ++ ii)
+            ]
