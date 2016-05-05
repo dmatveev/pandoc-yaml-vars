@@ -1,43 +1,8 @@
 module Main where
 
-import Data.Maybe (fromJust)
 import Text.Pandoc
-import Text.Pandoc.Walk
 import Text.Pandoc.JSON
-import Text.Parsec.String
-import Text.YamlVars.Processor
-import System.Exit (die)
-import System.Environment (lookupEnv)
-
-substDoc :: Dictionary -> Pandoc -> IO Pandoc
-substDoc d (Pandoc meta blocks) = do
-  writeFile "meta.txt" $ show meta
-  return $ Pandoc meta $ walk (substBlock d) blocks
-
-substBlock :: Dictionary -> Block -> Block
-substBlock d b = case b of
-  (CodeBlock a s) -> CodeBlock a (process s d)
-  (RawBlock f s)  -> RawBlock f (process s d)
-  otherwise       -> walk (substInl d) b
-
-substInl :: Dictionary -> Inline -> Inline
-substInl d i = case i of
-  (Str s)            -> Str (process s d)
-  (Code a s)         -> Code a (process s d)
-  (Math m s)         -> Math m (process s d)
-  (RawInline f s)    -> RawInline f (process s d)
-  (Link a ii (u,t))  -> Link a (p' ii) (process u d, process t d)
-  (Image a ii (u,t)) -> Image a (p' ii) (process u d, process t d)
-  otherwise          -> i
- where p' = walk (substInl d)
+import Text.YamlVars.Transform (transform)
 
 main :: IO ()
-main = do
-  mDictFile <- lookupEnv "VARSFILE"
-  case mDictFile of
-   Nothing   -> die "Please specify dictionary path in VARSFILE"
-   (Just df) -> do
-     md <- parseFromFile parseFile df
-     case md of
-      (Left e)  -> die $ show e
-      (Right d) -> toJSONFilter (substDoc d)
+main = toJSONFilter transform

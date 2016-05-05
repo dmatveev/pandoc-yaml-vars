@@ -24,45 +24,8 @@ import Text.Pandoc.Walk
 
 import qualified Data.Map as M
 
-import Text.YamlVars.Processor (parseStr, buildInlines, MetaDictionary)
-
--- Temporary definitions (to be re|moved)
-substMetaStr :: MetaDictionary -> Inline -> [Inline]
-substMetaStr dict i@(Str s) = case parseStr s of
-  (Left _)  -> [i]
-  (Right ps)-> buildInlines ps dict
-substMetaStr _    i = [i]
-
-substMetaInl :: MetaDictionary -> Inline -> Inline
-substMetaInl dict i = case i of
-  (Emph ii)         -> Emph        $ process ii
-  (Strong ii)       -> Strong      $ process ii
-  (Strikeout ii)    -> Strikeout   $ process ii
-  (Superscript ii)  -> Superscript $ process ii
-  (Subscript ii)    -> Subscript   $ process ii
-  (SmallCaps ii)    -> SmallCaps   $ process ii
-  (Quoted q ii)     -> Quoted q    $ process ii
-  (Cite cc ii)      -> Cite cc     $ process ii
-  (Link attr ii t)  -> Link  attr  ( process ii ) t
-  (Image attr ii t) -> Image attr  ( process ii ) t
-  (Span attr ii)    -> Span  attr  ( process ii )
-  (Note bb)         -> Note        $ map (walk (substMetaBlock dict)) bb
-  _                 -> i
- where
-   process ii = map (walk (substMetaInl dict)) $ concat $ map (substMetaStr dict) ii
-
-substMetaBlock :: MetaDictionary -> Block -> Block
-substMetaBlock dict b = case b of
-  (Plain ii)             -> Plain           $ process ii
-  (Para ii)              -> Para            $ process ii
-  (DefinitionList dl)    -> DefinitionList  $ map processDef dl
-  (Header lvl attr ii)   -> Header lvl attr $ process ii
-  (Table ii aa dd hh cc) -> Table (process ii) aa dd (processBB hh) (map processBB cc)
-  _                      -> walk (substMetaInl dict) b
- where
-   process ii         = map (walk (substMetaInl dict)) $ concat $ map (substMetaStr dict) ii
-   processBB          = map (walk (substMetaBlock dict))
-   processDef (ii,bb) = (process ii, processBB bb)
+import Text.YamlVars.Processor(parseStr, buildInlines, MetaDictionary)
+import Text.YamlVars.Transform(transform, substMetaStr, substMetaBlock)
 
 -- Tests (on Str)
 
@@ -85,6 +48,7 @@ multipleInlines = testInlSubst "Multiple inlines" value
   where value = [ Str "haskell", Space, Str "is", Space, Strong [Str "fun"] ]
 
 -- Tests (on document subtree)
+
 testTreeSubst :: String -> ([Inline] -> Block) -> [Inline] -> TestTree
 testTreeSubst name f value =
   testGroup name
